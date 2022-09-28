@@ -59,7 +59,7 @@ import {readContext, checkIfContextChanged} from './ReactFiberNewContext.new';
 import {
   requestEventTime,
   requestUpdateLane,
-  requestUpdateLane_isUnknownEventPriority,
+  requestUpdateLane_getUpdateType,
   scheduleUpdateOnFiber,
 } from './ReactFiberWorkLoop.new';
 import {logForceUpdateScheduled, logStateUpdateScheduled} from './DebugTracing';
@@ -194,7 +194,7 @@ const classComponentUpdater = {
     const fiber = getInstance(inst);
     const eventTime = requestEventTime();
     const lane = requestUpdateLane(fiber);
-    const isUnknownEventPriority = requestUpdateLane_isUnknownEventPriority();
+    const isUnknownEventPriority = requestUpdateLane_getUpdateType();
     const update = createUpdate(eventTime, lane);
     update.payload = payload;
     if (callback !== undefined && callback !== null) {
@@ -233,7 +233,7 @@ const classComponentUpdater = {
     const fiber = getInstance(inst);
     const eventTime = requestEventTime();
     const lane = requestUpdateLane(fiber);
-    const isUnknownEventPriority = requestUpdateLane_isUnknownEventPriority();
+    const isUnknownEventPriority = requestUpdateLane_getUpdateType();
 
     const update = createUpdate(eventTime, lane);
     update.tag = ReplaceState;
@@ -275,7 +275,7 @@ const classComponentUpdater = {
     const fiber = getInstance(inst);
     const eventTime = requestEventTime();
     const lane = requestUpdateLane(fiber);
-    const isUnknownEventPriority = requestUpdateLane_isUnknownEventPriority();
+    const isUnknownEventPriority = requestUpdateLane_getUpdateType();
 
     const update = createUpdate(eventTime, lane);
     update.tag = ForceUpdate;
