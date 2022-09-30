@@ -274,18 +274,18 @@ describe('ReactDOMFiberAsync', () => {
         expect(container.textContent).toEqual('');
         expect(ops).toEqual([]);
       });
-      // Only the active updates have flushed
-      expect(container.textContent).toEqual('BC');
-      expect(ops).toEqual(['BC']);
+      // Updates are batched on the sync lane
+      expect(container.textContent).toEqual('ABC');
+      expect(ops).toEqual(['ABC']);
 
       instance.push('D');
-      expect(container.textContent).toEqual('BC');
-      expect(ops).toEqual(['BC']);
+      expect(container.textContent).toEqual('ABC');
+      expect(ops).toEqual(['ABC']);
 
       // Flush the async updates
       Scheduler.unstable_flushAll();
       expect(container.textContent).toEqual('ABCD');
-      expect(ops).toEqual(['BC', 'ABCD']);
+      expect(ops).toEqual(['ABC', 'ABCD']);
     });
 
     // @gate www
@@ -819,7 +819,6 @@ describe('ReactDOMFiberAsync', () => {
       expect(counterRef.current.textContent).toBe('Count: 2');
     });
 
-    // @gate enableFrameEndScheduling
     it('unknown updates should be rescheduled in rAF after a higher priority update', async () => {
       let setState = null;
       let counterRef = null;
@@ -848,14 +847,17 @@ describe('ReactDOMFiberAsync', () => {
       });
       expect(Scheduler).toHaveYielded(['Count: 0']);
 
+      console.log('set state');
       window.event = undefined;
       setState(1);
 
       // Dispatch a click event on the button.
       const firstEvent = document.createEvent('Event');
       firstEvent.initEvent('click', true, true);
+      console.log('dispatch click!');
       counterRef.current.dispatchEvent(firstEvent);
-
+      console.log('gonna await');
+      console.log('window.event', window.event);
       await null;
 
       expect(Scheduler).toHaveYielded(['Count: 1']);

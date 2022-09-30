@@ -12,7 +12,6 @@
 
 export {
   DiscreteEventPriority,
-  ContinuousEventPriority,
   DefaultEventPriority,
   IdleEventPriority,
 } from './ReactEventPriorities';

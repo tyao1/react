@@ -412,6 +412,7 @@ type FrameAlignedTask = {|
 
 let currentTask: FrameAlignedTask | null = null;
 function performFrameAlignedWork() {
+  console.log('performFrameAlignedWork');
   if (currentTask != null) {
     const task = currentTask.task;
     localCancelAnimationFrame(currentTask.rafNode);
@@ -428,6 +429,7 @@ export function isFrameAlignedTask(task: any): boolean {
 }
 
 export function scheduleFrameAlignedTask(task: any): any {
+  console.log('scheduleFrameAlignedTask');
   if (currentTask === null) {
     const rafNode = localRequestAnimationFrame(performFrameAlignedWork);
 
@@ -453,6 +455,7 @@ export function scheduleFrameAlignedTask(task: any): any {
 }
 
 export function cancelFrameAlignedTask(task: any) {
+  console.log('cancelFrameAlignedTask');
   Scheduler.unstable_cancelCallback(task.schedulerNode);
   task.schedulerNode = null;
   // We don't cancel the rAF in case it gets re-used later.

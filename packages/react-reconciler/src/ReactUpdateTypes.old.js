@@ -9,5 +9,8 @@
 
 // TODO: Ideally these types would be opaque
 export type UpdateType = number;
-export const AsynchronousUpdate: UpdateType = 0;
-export const FrameAlignedUpdate: UpdateType = 1;
+export const AsynchronousUpdate: UpdateType = 4; // TODO: rename: DefaultUpdate
+export const FrameAlignedUpdate: UpdateType = 3;
+export const ContinuousUpdate: UpdateType = 2;
+export const DiscreteUpdate: UpdateType = 1;
+export const SynchronousUpdate: UpdateType = 0;

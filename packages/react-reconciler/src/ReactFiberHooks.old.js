@@ -66,10 +66,10 @@ import {
   NoTimestamp,
 } from './ReactFiberLane.old';
 import {
-  ContinuousEventPriority,
   getCurrentUpdatePriority,
   setCurrentUpdatePriority,
   higherEventPriority,
+  DiscreteEventPriority,
 } from './ReactEventPriorities.old';
 import {readContext, checkIfContextChanged} from './ReactFiberNewContext.old';
 import {HostRoot, CacheComponent} from './ReactWorkTags';
@@ -2168,7 +2168,7 @@ function updateDeferredValueImpl<T>(hook: Hook, prevValue: T, value: T): T {
 function startTransition(setPending, callback, options) {
   const previousPriority = getCurrentUpdatePriority();
   setCurrentUpdatePriority(
-    higherEventPriority(previousPriority, ContinuousEventPriority),
+    higherEventPriority(previousPriority, DiscreteEventPriority),
   );
 
   setPending(true);
@@ -2409,6 +2409,7 @@ function dispatchSetState<S, A>(
 
   const lane = requestUpdateLane(fiber);
   const updateType = requestUpdateLane_getUpdateType();
+  console.log('updateType', updateType);
   const update: Update<S, A> = {
     lane,
     action,

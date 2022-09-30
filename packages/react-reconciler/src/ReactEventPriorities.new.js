@@ -8,28 +8,40 @@
  */
 
 import type {Lane, Lanes} from './ReactFiberLane.new';
+import type {UpdateType} from './ReactUpdateTypes.new';
 
 import {
   NoLane,
   SyncLane,
-  InputContinuousLane,
-  DefaultLane,
   IdleLane,
   getHighestPriorityLane,
   includesNonIdleWork,
 } from './ReactFiberLane.new';
 
-export opaque type EventPriority = Lane;
+import {
+  ContinuousUpdate,
+  DiscreteUpdate,
+  FrameAlignedUpdate,
+  AsynchronousUpdate,
+} from './ReactUpdateTypes.new';
 
-export const UnknownEventPriority: EventPriority = NoLane;
-export const DiscreteEventPriority: EventPriority = SyncLane;
-export const ContinuousEventPriority: EventPriority = InputContinuousLane;
-export const DefaultEventPriority: EventPriority = DefaultLane;
+export opaque type EventPriority = number;
+
+export const UnknownEventPriority: EventPriority =
+  SyncLane | (FrameAlignedUpdate << 1);
+export const DiscreteEventPriority: EventPriority =
+  SyncLane | (DiscreteUpdate << 1);
+export const ContinuousEventPriority: EventPriority =
+  SyncLane | (ContinuousUpdate << 1);
+export const DefaultEventPriority: EventPriority = SyncLane | (AsynchronousUpdate << 1);
 export const IdleEventPriority: EventPriority = IdleLane;
+console.log(UnknownEventPriority, DiscreteEventPriority, ContinuousEventPriority, DefaultEventPriority);
+
 
 let currentUpdatePriority: EventPriority = NoLane;
 
 export function getCurrentUpdatePriority(): EventPriority {
+  console.log('getCurrentUpdatePriority', currentUpdatePriority);
   return currentUpdatePriority;
 }
 
@@ -68,16 +80,31 @@ export function isHigherEventPriority(
   return a !== 0 && a < b;
 }
 
-export function lanesToEventPriority(lanes: Lanes): EventPriority {
+export function lanesToEventPriority(
+  lanes: Lanes,
+  updateType: ?UpdateType,
+): EventPriority {
   const lane = getHighestPriorityLane(lanes);
-  if (!isHigherEventPriority(DiscreteEventPriority, lane)) {
+  console.log('highest lane?', lane, updateType);
+  if (!isHigherEventPriority(SyncLane, lane)) {
+    if (updateType === ContinuousUpdate) {
+      return ContinuousEventPriority;
+    }
+    if (updateType === AsynchronousUpdate || updateType === FrameAlignedUpdate) {
+      return DefaultEventPriority;
+    }
     return DiscreteEventPriority;
   }
-  if (!isHigherEventPriority(ContinuousEventPriority, lane)) {
-    return ContinuousEventPriority;
-  }
   if (includesNonIdleWork(lane)) {
+    console.log('default event?');
     return DefaultEventPriority;
   }
   return IdleEventPriority;
+}
+
+export function laneAndUpdateTypeToEventPriority(
+  lane: Lane,
+  updateType: UpdateType,
+): EventPriority {
+  return lane | (updateType << 1);
 }

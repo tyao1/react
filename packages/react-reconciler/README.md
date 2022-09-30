@@ -228,7 +228,6 @@ To implement this method, you'll need some constants available on the special `r
 ```js
 import {
   DiscreteEventPriority,
-  ContinuousEventPriority,
   DefaultEventPriority,
 } from 'react-reconciler/constants';
 

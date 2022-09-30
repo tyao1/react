@@ -29,10 +29,10 @@ import {
 } from 'shared/ReactFeatureFlags';
 import {
   DiscreteEventPriority,
-  ContinuousEventPriority,
   DefaultEventPriority,
   IdleEventPriority,
 } from './ReactEventPriorities.old';
+import {ContinuousUpdate} from './ReactUpdateTypes.old';
 import {
   ImmediatePriority as ImmediateSchedulerPriority,
   UserBlockingPriority as UserBlockingSchedulerPriority,
@@ -134,10 +134,11 @@ export function onCommitRoot(root: FiberRoot, eventPriority: EventPriority) {
         let schedulerPriority;
         switch (eventPriority) {
           case DiscreteEventPriority:
-            schedulerPriority = ImmediateSchedulerPriority;
-            break;
-          case ContinuousEventPriority:
-            schedulerPriority = UserBlockingSchedulerPriority;
+            if (root.updateType === ContinuousUpdate) {
+              schedulerPriority = UserBlockingSchedulerPriority;
+            } else {
+              schedulerPriority = ImmediateSchedulerPriority;
+            }
             break;
           case DefaultEventPriority:
             schedulerPriority = NormalSchedulerPriority;

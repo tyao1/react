@@ -29,7 +29,11 @@ import {
 import {isDevToolsPresent} from './ReactFiberDevToolsHook.old';
 import {ConcurrentUpdatesByDefaultMode, NoMode} from './ReactTypeOfMode';
 import {clz32} from './clz32';
-import {AsynchronousUpdate} from './ReactUpdateTypes.old';
+import {
+  AsynchronousUpdate,
+  ContinuousUpdate,
+  FrameAlignedUpdate,
+} from './ReactUpdateTypes.old';
 
 // Lane values below should be kept in sync with getLabelForLane(), used by react-devtools-timeline.
 // If those values are changed that package should be rebuilt and redeployed.
@@ -42,10 +46,8 @@ export const NoLane: Lane = /*                          */ 0b0000000000000000000
 export const SyncLane: Lane = /*                        */ 0b0000000000000000000000000000001;
 
 export const InputContinuousHydrationLane: Lane = /*    */ 0b0000000000000000000000000000010;
-export const InputContinuousLane: Lane = /*             */ 0b0000000000000000000000000000100;
 
 export const DefaultHydrationLane: Lane = /*            */ 0b0000000000000000000000000001000;
-export const DefaultLane: Lane = /*                     */ 0b0000000000000000000000000010000;
 
 const TransitionHydrationLane: Lane = /*                */ 0b0000000000000000000000000100000;
 const TransitionLanes: Lanes = /*                       */ 0b0000000001111111111111111000000;
@@ -94,14 +96,8 @@ export function getLabelForLane(lane: Lane): string | void {
     if (lane & InputContinuousHydrationLane) {
       return 'InputContinuousHydration';
     }
-    if (lane & InputContinuousLane) {
-      return 'InputContinuous';
-    }
     if (lane & DefaultHydrationLane) {
       return 'DefaultHydration';
-    }
-    if (lane & DefaultLane) {
-      return 'Default';
     }
     if (lane & TransitionHydrationLane) {
       return 'TransitionHydration';
@@ -133,17 +129,14 @@ let nextTransitionLane: Lane = TransitionLane1;
 let nextRetryLane: Lane = RetryLane1;
 
 function getHighestPriorityLanes(lanes: Lanes | Lane): Lanes {
+  // TODO: Default and continuous priroity is bumped, is this intended behavior?
   switch (getHighestPriorityLane(lanes)) {
     case SyncLane:
       return SyncLane;
     case InputContinuousHydrationLane:
       return InputContinuousHydrationLane;
-    case InputContinuousLane:
-      return InputContinuousLane;
     case DefaultHydrationLane:
       return DefaultHydrationLane;
-    case DefaultLane:
-      return DefaultLane;
     case TransitionHydrationLane:
       return TransitionHydrationLane;
     case TransitionLane1:
@@ -250,7 +243,9 @@ export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
       // Default priority updates should not interrupt transition updates. The
       // only difference between default updates and transition updates is that
       // default updates do not support refresh transitions.
-      (nextLane === DefaultLane && (wipLane & TransitionLanes) !== NoLanes)
+      (nextLane === SyncLane &&
+        root.updateType === AsynchronousUpdate &&
+        (wipLane & TransitionLanes) !== NoLanes)
     ) {
       // Keep working on the existing in-progress tree. Do not interrupt.
       return wipLanes;
@@ -261,13 +256,18 @@ export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
     allowConcurrentByDefault &&
     (root.current.mode & ConcurrentUpdatesByDefaultMode) !== NoMode
   ) {
+    console.log('do nothing, use the lanes', nextLanes.toString(2));
     // Do nothing, use the lanes as they were assigned.
-  } else if ((nextLanes & InputContinuousLane) !== NoLanes) {
+  } else if (
+    (nextLanes & SyncLane) !== NoLanes &&
+    root.updateType === ContinuousUpdate
+  ) {
     // When updates are sync by default, we entangle continuous priority updates
     // and default updates, so they render in the same batch. The only reason
     // they use separate lanes is because continuous updates should interrupt
     // transitions, but default updates should not.
-    nextLanes |= pendingLanes & DefaultLane;
+    nextLanes |= pendingLanes & SyncLane;
+    console.log('aaaa?', pendingLanes.toString(2), nextLanes.toString(2));
   }
 
   // Check for entangled lanes and add them to the batch.
@@ -330,9 +330,9 @@ export function getMostRecentEventTime(root: FiberRoot, lanes: Lanes): number {
 
 function computeExpirationTime(lane: Lane, currentTime: number) {
   switch (lane) {
+    // TODO: Default Lane is moved here ?
     case SyncLane:
     case InputContinuousHydrationLane:
-    case InputContinuousLane:
       // User interactions should expire slightly more quickly.
       //
       // NOTE: This is set to the corresponding constant as in Scheduler.js.
@@ -344,7 +344,6 @@ function computeExpirationTime(lane: Lane, currentTime: number) {
       // does happen.
       return currentTime + 250;
     case DefaultHydrationLane:
-    case DefaultLane:
     case TransitionHydrationLane:
     case TransitionLane1:
     case TransitionLane2:
@@ -472,8 +471,7 @@ export function includesOnlyRetries(lanes: Lanes): boolean {
   return (lanes & RetryLanes) === lanes;
 }
 export function includesOnlyNonUrgentLanes(lanes: Lanes): boolean {
-  const UrgentLanes = SyncLane | InputContinuousLane | DefaultLane;
-  return (lanes & UrgentLanes) === NoLanes;
+  return (lanes & SyncLane) === NoLanes;
 }
 export function includesOnlyTransitions(lanes: Lanes): boolean {
   return (lanes & TransitionLanes) === lanes;
@@ -486,10 +484,11 @@ export function includesBlockingLane(root: FiberRoot, lanes: Lanes): boolean {
   ) {
     if (
       enableFrameEndScheduling &&
-      (lanes & DefaultLane) !== NoLanes &&
+      (lanes & SyncLane) !== NoLanes &&
       root.updateType &&
-      root.updateType !== 0
+      root.updateType === FrameAlignedUpdate
     ) {
+      console.log('is frame aligned');
       // Unknown updates should flush synchronously, even in concurrent by default.
       return true;
     }
@@ -498,10 +497,7 @@ export function includesBlockingLane(root: FiberRoot, lanes: Lanes): boolean {
     return false;
   }
   const SyncDefaultLanes =
-    InputContinuousHydrationLane |
-    InputContinuousLane |
-    DefaultHydrationLane |
-    DefaultLane;
+    InputContinuousHydrationLane | DefaultHydrationLane | SyncLane;
   return (lanes & SyncDefaultLanes) !== NoLanes;
 }
 
@@ -603,6 +599,7 @@ export function markRootUpdated(
   eventTime: number,
   updateType: UpdateType,
 ) {
+  console.log('mark root updated', updateType);
   root.pendingLanes |= updateLane;
 
   if (updateType !== AsynchronousUpdate) {
@@ -667,7 +664,7 @@ export function markRootFinished(root: FiberRoot, remainingLanes: Lanes) {
 
   root.pendingLanes = remainingLanes;
 
-  if ((root.pendingLanes & DefaultLane) === NoLane) {
+  if ((root.pendingLanes & SyncLane) === NoLane) {
     root.updateType = AsynchronousUpdate;
   }
 
@@ -771,11 +768,14 @@ export function getBumpedLaneForHydration(
 
   let lane;
   switch (renderLane) {
-    case InputContinuousLane:
-      lane = InputContinuousHydrationLane;
-      break;
-    case DefaultLane:
-      lane = DefaultHydrationLane;
+    case SyncLane:
+      if (root.updateType === ContinuousUpdate) {
+        lane = InputContinuousHydrationLane;
+      } else if (root.updateType === AsynchronousUpdate) {
+        lane = DefaultHydrationLane;
+      } else {
+        lane = NoLane;
+      }
       break;
     case TransitionLane1:
     case TransitionLane2:
