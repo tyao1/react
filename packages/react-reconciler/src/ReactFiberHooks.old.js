@@ -102,7 +102,6 @@ import {
   getWorkInProgressRootRenderLanes,
   scheduleUpdateOnFiber,
   requestUpdateLane,
-  requestUpdateLane_getUpdatePriority,
   requestEventTime,
   markSkippedUpdateLanes,
   isInvalidExecutionContextForEventFunction,

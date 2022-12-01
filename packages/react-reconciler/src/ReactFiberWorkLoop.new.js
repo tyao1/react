@@ -168,6 +168,7 @@ import {
   movePendingFibersToMemoized,
   addTransitionToLanesMap,
   getTransitionsForLanes,
+  DefaultLane,
 } from './ReactFiberLane.new';
 import {
   DiscreteEventPriority,
